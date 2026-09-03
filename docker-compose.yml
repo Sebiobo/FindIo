@@ -1,0 +1,47 @@
+services:
+  db-postgres:
+    image: postgres:16-alpine
+    container_name: findio_db
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "${DB_PORT}:5432"
+    volumes:
+      - findio_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
+  app-backend:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile
+    container_name: findio_backend
+    ports:
+      - "8080:8080"
+    environment:
+      DB_HOST: db-postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+    depends_on:
+      db-postgres:
+        condition: service_healthy
+
+  app-frontend:
+    build:
+      context: ./Frontend
+      dockerfile: Dockerfile
+    container_name: findio_frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - app-backend
+
+volumes:
+  findio_db_data:
